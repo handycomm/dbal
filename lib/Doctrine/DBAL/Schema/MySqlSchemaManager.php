@@ -122,6 +122,7 @@ class MySqlSchemaManager extends AbstractSchemaManager
 
         $scale = null;
         $precision = null;
+        $customSchemaOptions = array();
 
         $type = $this->_platform->getDoctrineTypeMapping($dbType);
 
@@ -140,6 +141,11 @@ class MySqlSchemaManager extends AbstractSchemaManager
             case 'double':
             case 'real':
             case 'numeric':
+            case 'enum':
+                if(preg_match('([A-Za-z]+\(\'([A-Za-z0-9]+)\'\,\'([A-Za-z0-9]+)\'\))', $tableColumn['type'], $match)) {
+                    $customSchemaOptions['values'] = array($match[1], $match[2]);
+                }
+                break;
             case 'decimal':
                 if (preg_match('([A-Za-z]+\(([0-9]+)\,([0-9]+)\))', $tableColumn['type'], $match)) {
                     $precision = $match[1];
@@ -190,6 +196,7 @@ class MySqlSchemaManager extends AbstractSchemaManager
             'comment'       => isset($tableColumn['comment']) && $tableColumn['comment'] !== ''
                 ? $tableColumn['comment']
                 : null,
+            'customSchemaOptions' => $customSchemaOptions,
         );
 
         if ($scale !== null && $precision !== null) {
@@ -197,13 +204,7 @@ class MySqlSchemaManager extends AbstractSchemaManager
             $options['precision'] = $precision;
         }
 
-        $column = new Column($tableColumn['field'], Type::getType($type), $options);
-
-        if (isset($tableColumn['collation'])) {
-            $column->setPlatformOption('collation', $tableColumn['collation']);
-        }
-
-        return $column;
+        return new Column($tableColumn['field'], Type::getType($type), $options);
     }
 
     /**
